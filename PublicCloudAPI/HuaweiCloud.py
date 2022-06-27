@@ -109,23 +109,6 @@ class HuaweiCloudAccount():
             .build()
 
         try:
-            request = ListPublicZonesRequest()
-            response = json.loads(str(client.list_public_zones(request)))["zones"]
-            for zone in response:
-                if zone["name"] == name:
-                    return zone["id"]
-        except exceptions.ClientRequestException as e:
-            print(e.status_code)
-            print(e.request_id)
-            print(e.error_code)
-            print(e.error_msg)
-            return None
-        client = DnsClient.new_builder() \
-            .with_credentials(self.__credentials) \
-            .with_region(DnsRegion.value_of(self.__region)) \
-            .build()
-
-        try:
             request = ListRecordSetsWithLineRequest()
             request.name = name
             response = client.list_record_sets_with_line(request)
@@ -215,3 +198,72 @@ class HuaweiCloudAccount():
             print(e.error_code)
             print(e.error_msg)
             return None
+
+    def delete_records_set_by_id(self, recordset_id, zone_id):
+        client = DnsClient.new_builder() \
+            .with_credentials(self.__credentials) \
+            .with_region(DnsRegion.value_of(self.__region)) \
+            .build()
+
+        try:
+            request = DeleteRecordSetsRequest()
+            request.zone_id = zone_id
+            request.recordset_id = recordset_id
+            response = client.delete_record_sets(request)
+            return json.loads(str(response))
+        except exceptions.ClientRequestException as e:
+            print(e.status_code)
+            print(e.request_id)
+            print(e.error_code)
+            print(e.error_msg)
+            return None
+
+    def get_record_sets_id_by_name(self, name, zone_id=None):
+        record_id_list = []
+        if zone_id is None:
+            zone_id = self.get_zone_id_by_name(name)
+        client = DnsClient.new_builder() \
+            .with_credentials(self.__credentials) \
+            .with_region(DnsRegion.value_of(self.__region)) \
+            .build()
+
+        try:
+            request = ShowRecordSetByZoneRequest()
+            request.zone_id = zone_id
+            request.name = name
+            response = json.loads(str(client.show_record_set_by_zone(request)))["recordsets"]
+            for this_record in response:
+                record_id_list.append(this_record["id"])
+            return record_id_list
+        except exceptions.ClientRequestException as e:
+            print(e.status_code)
+            print(e.request_id)
+            print(e.error_code)
+            print(e.error_msg)
+            return None
+
+    def delete_records_set_by_name(self, name, zone_id=None):
+        if zone_id is None:
+            zone_id = self.get_zone_id_by_name(name)
+        record_id_list = self.get_record_sets_id_by_name(name, zone_id)
+        for record_id in record_id_list:
+            client = DnsClient.new_builder() \
+                .with_credentials(self.__credentials) \
+                .with_region(DnsRegion.value_of(self.__region)) \
+                .build()
+
+            try:
+                request = DeleteRecordSetsRequest()
+                request.zone_id = zone_id
+                request.recordset_id = record_id
+                response = client.delete_record_sets(request)
+                return json.loads(str(response))
+            except exceptions.ClientRequestException as e:
+                print(e.status_code)
+                print(e.request_id)
+                print(e.error_code)
+                print(e.error_msg)
+                return None
+
+    def update_record_set_by_id(self, name, record_type, zone_id, recordset_id):
+        return None
