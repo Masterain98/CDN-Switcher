@@ -218,7 +218,7 @@ class HuaweiCloudAccount():
             print(e.error_msg)
             return None
 
-    def get_record_sets_id_by_name(self, name, zone_id=None):
+    def get_record_sets_id_by_name(self, name, line=None, zone_id=None):
         record_id_list = []
         if zone_id is None:
             zone_id = self.get_zone_id_by_name(name)
@@ -233,7 +233,9 @@ class HuaweiCloudAccount():
             request.name = name
             response = json.loads(str(client.show_record_set_by_zone(request)))["recordsets"]
             for this_record in response:
-                record_id_list.append(this_record["id"])
+                if line is not None:
+                    if this_record["line"] == line:
+                        record_id_list.append(this_record["id"])
             return record_id_list
         except exceptions.ClientRequestException as e:
             print(e.status_code)
@@ -245,7 +247,7 @@ class HuaweiCloudAccount():
     def delete_records_set_by_name(self, name, zone_id=None):
         if zone_id is None:
             zone_id = self.get_zone_id_by_name(name)
-        record_id_list = self.get_record_sets_id_by_name(name, zone_id)
+        record_id_list = self.get_record_sets_id_by_name(name=name, zone_id=zone_id)
         for record_id in record_id_list:
             client = DnsClient.new_builder() \
                 .with_credentials(self.__credentials) \
@@ -265,5 +267,37 @@ class HuaweiCloudAccount():
                 print(e.error_msg)
                 return None
 
-    def update_record_set_by_id(self, name, record_type, zone_id, recordset_id):
-        return None
+    def update_record_set_by_id(self, name: str, record_type: str, record_value: list, zone_id: str, recordset_id: str):
+        client = DnsClient.new_builder() \
+            .with_credentials(self.__credentials) \
+            .with_region(DnsRegion.value_of(self.__region)) \
+            .build()
+
+        try:
+            request = UpdateRecordSetsRequest()
+            request.zone_id = zone_id
+            request.recordset_id = recordset_id
+            listUpdateRecordSetsReqRecordsbody = record_value
+            request.body = UpdateRecordSetsReq(
+                records=listUpdateRecordSetsReqRecordsbody,
+                type=record_type,
+                name=name
+            )
+            response = client.update_record_sets(request)
+            return json.loads(str(response))
+        except exceptions.ClientRequestException as e:
+            print(e.status_code)
+            print(e.request_id)
+            print(e.error_code)
+            print(e.error_msg)
+            return None
+
+    def update_record_set_by_name_line(self, name: str, target_line: str, new_record_value: list, record_type: str):
+        result_list = []
+        zone_id = self.get_zone_id_by_name(name)
+        record_id_list = self.get_record_sets_id_by_name(name, target_line, zone_id)
+        for record_id in record_id_list:
+            result_list.append(
+                self.update_record_set_by_id(name=name, record_type=record_type, record_value=new_record_value,
+                                             zone_id=zone_id, recordset_id=record_id))
+        return result_list
