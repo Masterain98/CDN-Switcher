@@ -4,7 +4,7 @@ from huaweicloudsdkcore.auth.credentials import BasicCredentials
 from huaweicloudsdkdns.v2.region.dns_region import DnsRegion
 from huaweicloudsdkcore.exceptions import exceptions
 from huaweicloudsdkdns.v2 import *
-
+from log_printer import log_printer
 import json
 import re
 
@@ -21,6 +21,7 @@ class HuaweiCloudAccount():
 
         self.__credentials = BasicCredentials(ak, sk)
 
+    @log_printer
     def list_public_zone(self):
         """
         # Show all zones and their ID under the account
@@ -46,6 +47,7 @@ class HuaweiCloudAccount():
             print(e.error_msg)
             return None
 
+    @log_printer
     def get_record_id_by_name(self, name):
         """
         # This is a generic function provided by HuaweiCloud
@@ -70,6 +72,7 @@ class HuaweiCloudAccount():
             print(e.error_code)
             print(e.error_msg)
 
+    @log_printer
     def get_record_china_line_id(self, name):
         # 遍历中国大陆地区解析记录 ID
         result = []
@@ -79,6 +82,7 @@ class HuaweiCloudAccount():
                 result.append(record["id"])
         return result  # return a list of record ID
 
+    @log_printer
     def get_record_abroad_line_id(self, name):
         # 遍历国外地区解析记录 ID
         result = []
@@ -88,6 +92,7 @@ class HuaweiCloudAccount():
                 result.append(record["id"])
         return result  # return a list of record ID
 
+    @log_printer
     def get_record_default_line_id(self, name):
         # 遍历默认解析记录 ID
         result = []
@@ -97,6 +102,7 @@ class HuaweiCloudAccount():
                 result.append(record["id"])
         return result  # return a list of record ID
 
+    @log_printer
     def get_zone_id_by_name(self, name):
         """
         # Get zone ID by zone name
@@ -122,6 +128,7 @@ class HuaweiCloudAccount():
             print(e.request_id)
             print(e.error_code)
             print(e.error_msg)
+            return None
 
     def describe_cdn_provider(self, name):
         default_line_cdn_provider = []
@@ -156,6 +163,7 @@ class HuaweiCloudAccount():
         print("China line CDN provider: " + str(china_line_cdn_provider))
         print("Abroad line CDN provider: " + str(abroad_line_cdn_provider))
 
+    @log_printer
     def create_record_set_with_line(self, name: str, record_type: str, records: list, line: str, ttl: int = 300,
                                     zone_id: str = None):
         ALLOWED_TYPES = ["A", "AAAA", "CNAME", "TXT", "MX", "NS", "SRV", "CAA"]
@@ -199,6 +207,7 @@ class HuaweiCloudAccount():
             print(e.error_msg)
             return None
 
+    @log_printer
     def delete_records_set_by_id(self, recordset_id, zone_id):
         client = DnsClient.new_builder() \
             .with_credentials(self.__credentials) \
@@ -218,6 +227,7 @@ class HuaweiCloudAccount():
             print(e.error_msg)
             return None
 
+    @log_printer
     def get_record_sets_id_by_name(self, name, line=None, zone_id=None):
         record_id_list = []
         if zone_id is None:
@@ -244,6 +254,7 @@ class HuaweiCloudAccount():
             print(e.error_msg)
             return None
 
+    @log_printer
     def delete_records_set_by_name(self, name, zone_id=None):
         if zone_id is None:
             zone_id = self.get_zone_id_by_name(name)
@@ -267,6 +278,7 @@ class HuaweiCloudAccount():
                 print(e.error_msg)
                 return None
 
+    @log_printer
     def update_record_set_by_id(self, name: str, record_type: str, record_value: list, zone_id: str, recordset_id: str):
         client = DnsClient.new_builder() \
             .with_credentials(self.__credentials) \
@@ -292,12 +304,17 @@ class HuaweiCloudAccount():
             print(e.error_msg)
             return None
 
+    @log_printer
     def update_record_set_by_name_line(self, name: str, target_line: str, new_record_value: list, record_type: str):
         result_list = []
         zone_id = self.get_zone_id_by_name(name)
         record_id_list = self.get_record_sets_id_by_name(name, target_line, zone_id)
+        if len(record_id_list) == 0:
+            raise AttributeError("No record found")
         for record_id in record_id_list:
             result_list.append(
                 self.update_record_set_by_id(name=name, record_type=record_type, record_value=new_record_value,
                                              zone_id=zone_id, recordset_id=record_id))
+        if len(result_list) > 0:
+            print("Successfully updated record '" + name + "' with line " + target_line)
         return result_list
