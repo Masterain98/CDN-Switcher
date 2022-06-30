@@ -4,6 +4,12 @@ from huaweicloudsdkcore.auth.credentials import BasicCredentials
 from huaweicloudsdkdns.v2.region.dns_region import DnsRegion
 from huaweicloudsdkcore.exceptions import exceptions
 from huaweicloudsdkdns.v2 import *
+
+from huaweicloudsdkcore.auth.credentials import GlobalCredentials
+from huaweicloudsdkcdn.v1.region.cdn_region import CdnRegion
+from huaweicloudsdkcore.exceptions import exceptions
+from huaweicloudsdkcdn.v1 import *
+
 from log_printer import class_log_printer
 import json
 import re
@@ -20,6 +26,11 @@ class HuaweiCloudAccount:
         self.__region = region
 
         self.__credentials = BasicCredentials(ak, sk)
+        self.__global_credentials = GlobalCredentials(ak, sk)
+
+    """
+    DNS API Starts here
+    """
 
     @class_log_printer
     def list_public_zone(self):
@@ -279,7 +290,7 @@ class HuaweiCloudAccount:
                 return None
 
     @class_log_printer
-    def update_record_set_by_id(self, name: str, record_type: str, record_value: list, zone_id: str, recordset_id: str):
+    def update_record_set_by_id(self, name: str, record_type: str, new_record_value: list, zone_id: str, recordset_id: str):
         client = DnsClient.new_builder() \
             .with_credentials(self.__credentials) \
             .with_region(DnsRegion.value_of(self.__region)) \
@@ -289,7 +300,7 @@ class HuaweiCloudAccount:
             request = UpdateRecordSetsRequest()
             request.zone_id = zone_id
             request.recordset_id = recordset_id
-            listUpdateRecordSetsReqRecordsbody = record_value
+            listUpdateRecordSetsReqRecordsbody = new_record_value
             request.body = UpdateRecordSetsReq(
                 records=listUpdateRecordSetsReqRecordsbody,
                 type=record_type,
@@ -313,8 +324,86 @@ class HuaweiCloudAccount:
             raise AttributeError("No record found")
         for record_id in record_id_list:
             result_list.append(
-                self.update_record_set_by_id(name=name, record_type=record_type, record_value=new_record_value,
+                self.update_record_set_by_id(name=name, record_type=record_type, new_record_value=new_record_value,
                                              zone_id=zone_id, recordset_id=record_id))
         if len(result_list) > 0:
             print("Successfully updated record '" + name + "' with line " + target_line)
         return result_list
+
+    """
+    CDN API Starts here
+    """
+    def cdn_client_generator(self):
+        try:
+            client = CdnClient.new_builder() \
+                .with_credentials(self.__global_credentials) \
+                .with_region(CdnRegion.value_of(self.__region)) \
+                .build()
+        except KeyError:
+            try:
+                client = CdnClient.new_builder() \
+                    .with_credentials(self.__global_credentials) \
+                    .with_region(CdnRegion.value_of("ap-southeast-1")) \
+                    .build()
+            except Exception:
+                raise AttributeError("No credentials found")
+        print("CDN API credentials generated successfully")
+        return client
+
+    @class_log_printer
+    def get_cdn_quota(self):
+        client = self.cdn_client_generator()
+
+        try:
+            request = ShowQuotaRequest()
+            response = client.show_quota(request)
+            return json.loads(str(response))
+        except exceptions.ClientRequestException as e:
+            print(e.status_code)
+            print(e.request_id)
+            print(e.error_code)
+            print(e.error_msg)
+            return None
+
+    @class_log_printer
+    def cdn_list_domains(self):
+        client = self.cdn_client_generator()
+
+        try:
+            request = ListDomainsRequest()
+            response = client.list_domains(request)
+            return json.loads(str(response))
+        except exceptions.ClientRequestException as e:
+            print(e.status_code)
+            print(e.request_id)
+            print(e.error_code)
+            print(e.error_msg)
+            return None
+
+    def get_cdn_domain_id_by_name(self, name: str):
+        all_domains_list = self.cdn_list_domains()
+        for domain in all_domains_list["domains"]:
+            if domain["domain_name"] == name:
+                return domain["id"]
+        return None
+
+    def disable_cdn_domain_by_id(self, domain_id: str):
+        client = self.cdn_client_generator()
+
+        try:
+            request = DisableDomainRequest()
+            request.domain_id = domain_id
+            response = client.disable_domain(request)
+            return json.loads(str(response))
+        except exceptions.ClientRequestException as e:
+            print(e.status_code)
+            print(e.request_id)
+            print(e.error_code)
+            print(e.error_msg)
+            return None
+
+    def disable_cdn_domain_by_name(self, name: str):
+        domain_id = self.get_cdn_domain_id_by_name(name)
+        if domain_id is None:
+            raise AttributeError("No domain found")
+        return self.disable_cdn_domain_by_id(domain_id)
