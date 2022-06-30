@@ -389,7 +389,6 @@ class HuaweiCloudAccount:
 
     def disable_cdn_domain_by_id(self, domain_id: str):
         client = self.cdn_client_generator()
-
         try:
             request = DisableDomainRequest()
             request.domain_id = domain_id
@@ -407,3 +406,23 @@ class HuaweiCloudAccount:
         if domain_id is None:
             raise AttributeError("No domain found")
         return self.disable_cdn_domain_by_id(domain_id)
+
+    def enable_cdn_domain_by_id(self, domain_id: str):
+        client = self.cdn_client_generator()
+        try:
+            request = EnableDomainRequest()
+            request.domain_id = domain_id
+            response = client.enable_domain(request)
+            return json.loads(str(response))
+        except exceptions.ClientRequestException as e:
+            print(e.status_code)
+            print(e.request_id)
+            print(e.error_code)
+            print(e.error_msg)
+            return None
+
+    def enable_cdn_domain_by_name(self, name: str):
+        domain_id = self.get_cdn_domain_id_by_name(name)
+        if domain_id is None:
+            raise AttributeError("No domain found")
+        return self.enable_cdn_domain_by_id(domain_id)
