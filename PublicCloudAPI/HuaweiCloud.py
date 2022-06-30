@@ -10,6 +10,11 @@ from huaweicloudsdkcdn.v1.region.cdn_region import CdnRegion
 from huaweicloudsdkcore.exceptions import exceptions
 from huaweicloudsdkcdn.v1 import *
 
+from huaweicloudsdkcore.auth.credentials import GlobalCredentials
+from huaweicloudsdkbss.v2.region.bss_region import BssRegion
+from huaweicloudsdkcore.exceptions import exceptions
+from huaweicloudsdkbss.v2 import *
+
 from log_printer import class_log_printer
 import json
 import re
@@ -290,7 +295,8 @@ class HuaweiCloudAccount:
                 return None
 
     @class_log_printer
-    def update_record_set_by_id(self, name: str, record_type: str, new_record_value: list, zone_id: str, recordset_id: str):
+    def update_record_set_by_id(self, name: str, record_type: str, new_record_value: list, zone_id: str,
+                                recordset_id: str):
         client = DnsClient.new_builder() \
             .with_credentials(self.__credentials) \
             .with_region(DnsRegion.value_of(self.__region)) \
@@ -333,6 +339,7 @@ class HuaweiCloudAccount:
     """
     CDN API Starts here
     """
+
     def cdn_client_generator(self):
         try:
             client = CdnClient.new_builder() \
@@ -426,3 +433,71 @@ class HuaweiCloudAccount:
         if domain_id is None:
             raise AttributeError("No domain found")
         return self.enable_cdn_domain_by_id(domain_id)
+
+    def get_all_free_resource(self):
+        client = BssClient.new_builder() \
+            .with_credentials(self.__global_credentials) \
+            .with_region(BssRegion.value_of("cn-north-1")) \
+            .build()
+
+        try:
+            request = ListFreeResourceInfosRequest()
+            response = client.list_free_resource_infos(request)
+            return json.loads(str(response))
+        except exceptions.ClientRequestException as e:
+            print(e.status_code)
+            print(e.request_id)
+            print(e.error_code)
+            print(e.error_msg)
+            return None
+
+    def get_all_active_cdn_traffic_package(self):
+        cdn_package_id_list = []
+
+        all_free_resource_packages = self.get_all_free_resource()["free_resource_packages"]
+        for package in all_free_resource_packages:
+            if package["service_type_name"] == "内容分发网络" and package["status"] == 1:
+                for item in package["free_resources"]:
+                    cdn_package_id_list.append(item["free_resource_id"])
+        return cdn_package_id_list
+
+    def get_remaining_traffic(self):
+        china_mainland_traffic_remaining = 0
+        china_mainland_traffic_total = 0
+        china_off_peak_traffic_remaining = 0
+        china_off_peak_traffic_total = 0
+
+        cdn_package_id_list = self.get_all_active_cdn_traffic_package()
+        for package_id in cdn_package_id_list:
+            client = BssClient.new_builder() \
+                .with_credentials(self.__global_credentials) \
+                .with_region(BssRegion.value_of("cn-north-1")) \
+                .build()
+
+            try:
+                request = ListFreeResourceUsagesRequest()
+                listListFreeResourceUsagesReqFreeResourceIdsbody = [
+                    package_id
+                ]
+                request.body = ListFreeResourceUsagesReq(
+                    free_resource_ids=listListFreeResourceUsagesReqFreeResourceIdsbody
+                )
+                response = json.loads(str(client.list_free_resource_usages(request)))["free_resources"][0]
+                if "闲时" in response["free_resource_type_name"]:
+                    china_off_peak_traffic_remaining += response["amount"]
+                    china_off_peak_traffic_total += response["original_amount"]
+                else:
+                    china_mainland_traffic_remaining += response["amount"]
+                    china_mainland_traffic_total += response["original_amount"]
+            except exceptions.ClientRequestException as e:
+                print(e.status_code)
+                print(e.request_id)
+                print(e.error_code)
+                print(e.error_msg)
+                return None
+        return {
+            "china_mainland_traffic_remaining": china_mainland_traffic_remaining,
+            "china_mainland_traffic_total": china_mainland_traffic_total,
+            "china_off_peak_traffic_remaining": china_off_peak_traffic_remaining,
+            "china_off_peak_traffic_total": china_off_peak_traffic_total
+        }
