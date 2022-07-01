@@ -498,6 +498,8 @@ class HuaweiCloudAccount:
         return {
             "china_mainland_traffic_remaining": china_mainland_traffic_remaining,
             "china_mainland_traffic_total": china_mainland_traffic_total,
+            "china_mainland_traffic_percent": round(china_mainland_traffic_remaining / china_mainland_traffic_total * 100, 2),
             "china_off_peak_traffic_remaining": china_off_peak_traffic_remaining,
-            "china_off_peak_traffic_total": china_off_peak_traffic_total
+            "china_off_peak_traffic_total": china_off_peak_traffic_total,
+            "china_off_peak_traffic_percent": round(china_off_peak_traffic_remaining / china_off_peak_traffic_total * 100, 2)
         }
