@@ -164,7 +164,7 @@ class HuaweiCloudAccount:
                     elif re.match(r"cdnhwc(\d)+.cn", value) is not None:
                         this_cdn_provider = "Huawei Cloud"
                     else:
-                        this_cdn_provider = "Unknown"
+                        this_cdn_provider = "Unknown:" + value
 
                     if record["line"] == "default_view":
                         default_line_cdn_provider.append(this_cdn_provider)
