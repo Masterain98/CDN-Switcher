@@ -25,3 +25,13 @@ class PaaSTask:
         else:
             raise TypeError("cdn_account and cdn_account_type must be both None or both not None")
 
+    def add_cdn_config(self, cdn_account, cdn_account_type: str):
+        """
+        添加 CDN 账号和其公有云平台类型
+        :param cdn_account: 此 CDN 的账号 Object
+        :param cdn_account_type: 此 CDN 所属的公有云平台
+        :return:
+        """
+        self.cdn_account = cdn_account
+        self.cdn_account_type = cdn_account_type
+        return self
