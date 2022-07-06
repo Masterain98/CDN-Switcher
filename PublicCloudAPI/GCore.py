@@ -10,7 +10,6 @@ class GCoreAccount:
             "Authorization": "APIKey " + self.__api_key
         }
 
-
     def get_cdn_service_details(self):
         host = "https://api.gcorelabs.com/cdn/clients/me"
         response = requests.get(host, headers=self.__default_headers)
@@ -61,7 +60,7 @@ class GCoreAccount:
         result = self.get_cdn_30_days_traffic()["resource"]
         for resource_id in result.keys():
             total_traffic_bytes += result[resource_id]["metrics"]["sent_bytes"]
-        return TOTAL_TRAFFIC-total_traffic_bytes
+        return TOTAL_TRAFFIC - total_traffic_bytes
 
     def get_remaining_traffic_percentage(self):
-        return round(self.get_remaining_traffic()/1099511627776, 4)
+        return round(self.get_remaining_traffic() / 1099511627776, 4)
