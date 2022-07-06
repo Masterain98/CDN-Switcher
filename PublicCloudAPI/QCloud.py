@@ -46,7 +46,7 @@ class QCloudAccount:
         return return_list
 
     @class_log_printer
-    def get_remaining_traffic_packages(self):
+    def get_remaining_traffic(self):
         bytes_total = 0
         bytes_used = 0
         bytes_remaining = 0
