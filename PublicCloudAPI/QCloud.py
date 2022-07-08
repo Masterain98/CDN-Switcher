@@ -58,3 +58,7 @@ class QCloudAccount:
         bytes_remaining_percentage = round(bytes_remaining / bytes_total, 4)
         return {"bytes_total": bytes_total, "bytes_used": bytes_used, "bytes_remaining": bytes_remaining,
                 "bytes_remaining_percentage": bytes_remaining_percentage}
+
+    @class_log_printer
+    def get_remaining_traffic_percentage(self):
+        return self.get_remaining_traffic()["bytes_remaining_percentage"]

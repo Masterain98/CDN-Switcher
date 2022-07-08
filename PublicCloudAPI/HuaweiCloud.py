@@ -16,6 +16,7 @@ from huaweicloudsdkcore.exceptions import exceptions
 from huaweicloudsdkbss.v2 import *
 
 from log_printer import class_log_printer
+import datetime
 import json
 import re
 
@@ -157,8 +158,6 @@ class HuaweiCloudAccount:
                 for value in record["records"]:
                     if "aicdn.com" in value:
                         this_cdn_provider = "UPYUN"
-                    elif "qiniu.com" in value:
-                        this_cdn_provider = "Qiniu"
                     elif "gcdn.co" in value:
                         this_cdn_provider = "G-Core"
                     elif re.match(r"cdnhwc(\d)+.cn", value) is not None:
@@ -178,6 +177,11 @@ class HuaweiCloudAccount:
         print("Default line CDN provider: " + str(default_line_cdn_provider))
         print("China line CDN provider: " + str(china_line_cdn_provider))
         print("Abroad line CDN provider: " + str(abroad_line_cdn_provider))
+        return {
+            "default": default_line_cdn_provider,
+            "CN": china_line_cdn_provider,
+            "Abroad": abroad_line_cdn_provider
+        }
 
     @class_log_printer
     def create_record_set_with_line(self, name: str, record_type: str, records: list, line: str, ttl: int = 300,
@@ -503,3 +507,15 @@ class HuaweiCloudAccount:
             "china_off_peak_traffic_total": china_off_peak_traffic_total,
             "china_off_peak_traffic_percent": round(china_off_peak_traffic_remaining / china_off_peak_traffic_total * 100, 2)
         }
+
+    def get_remaining_traffic_percentage(self):
+        """
+        获取剩余流量的百分比
+        :return:
+        """
+        remaining_traffic = self.get_remaining_traffic()
+        current_hour = datetime.datetime.now().hour
+        if current_hour >= 18:
+            return remaining_traffic["china_mainland_traffic_percent"]
+        else:
+            return remaining_traffic["china_off_peak_traffic_percent"]
