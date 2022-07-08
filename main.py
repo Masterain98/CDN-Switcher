@@ -97,8 +97,9 @@ def switch_to_free_cdn(task_list: list):
     该列表结构为 [ fail-over CDN 的 PaaSTask 对象, [Activate CDN 帐号对象, CDN 服务商名(str)], [Activate CDN 帐号对象, CDN 服务商名(str)]]
     :return:
     """
+    print("Start timely traffic check")
     for current_task in task_list:
-        # 每一个 currrent_task 代表一个 CDN 域名
+        # 每一个 current_task 代表一个 CDN 域名
         current_cdn_status = current_task.dns_account.describe_cdn_provider(name=current_task.domain)
         # current_cdn_status 的结构为         {
         #             "default": default_line_cdn_provider,
@@ -115,30 +116,39 @@ def switch_to_free_cdn(task_list: list):
                     current_remaining_traffic_percent = current_task[i][0].get_remaining_traffic()
                     if current_remaining_traffic_percent < current_task[i][2]:
                         print("CDN Traffic Package is low, switch to fail-over CDN: " + current_task.domain)
-                        current_task.dns_account.update_record_set_by_name_line(name=current_task.domain, target_line="default-view",
-                                                                                record_type="CNAME", new_record_value=current_task[0].cname)
+                        current_task.dns_account.update_record_set_by_name_line(name=current_task.domain,
+                                                                                target_line="default-view",
+                                                                                record_type="CNAME",
+                                                                                new_record_value=current_task[0].cname)
                     else:
+                        print(
+                            "CDN Traffic Package is high, keep using default CDN at Default Line: " + current_task.domain)
                         pass
                 elif this_cdn_type in current_cdn_status["CN"]:
                     current_remaining_traffic_percent = current_task[i][0].get_remaining_traffic()
                     if current_remaining_traffic_percent < current_task[i][2]:
                         print("CDN Traffic Package is low, switch to fail-over CDN: " + current_task.domain)
-                        current_task.dns_account.update_record_set_by_name_line(name=current_task.domain, target_line="CN",
-                                                                                record_type="CNAME", new_record_value=current_task[0].cname)
+                        current_task.dns_account.update_record_set_by_name_line(name=current_task.domain,
+                                                                                target_line="CN",
+                                                                                record_type="CNAME",
+                                                                                new_record_value=current_task[0].cname)
                     else:
+                        print("CDN Traffic Package is high, keep using default CDN at CN Line: " + current_task.domain)
                         pass
                 elif this_cdn_type in current_cdn_status["Abroad"]:
                     current_remaining_traffic_percent = current_task[i][0].get_remaining_traffic()
                     if current_remaining_traffic_percent < current_task[i][2]:
                         print("CDN Traffic Package is low, switch to fail-over CDN: " + current_task.domain)
-                        current_task.dns_account.update_record_set_by_name_line(name=current_task.domain, target_line="Abroad",
-                                                                                record_type="CNAME", new_record_value=current_task[0].cname)
+                        current_task.dns_account.update_record_set_by_name_line(name=current_task.domain,
+                                                                                target_line="Abroad",
+                                                                                record_type="CNAME",
+                                                                                new_record_value=current_task[0].cname)
                     else:
+                        print(
+                            "CDN Traffic Package is high, keep using default CDN at Aboard Line: " + current_task.domain)
                         pass
             else:
                 pass
-
-
 
 
 if __name__ == '__main__':
@@ -146,6 +156,7 @@ if __name__ == '__main__':
         config = json.load(f)
     for task in config["task"]:
         domain = task["domain"]
+        print("=" * 20 + "\nStart checking domain config: " + domain)
         enable_off_peak_switch = task["enable_off_peak_switch"]
         enable_traffic_package_switch = task["enable_traffic_package_switch"]
         traffic_package_floor_limit = task["traffic_package_floor_limit"]
@@ -158,28 +169,31 @@ if __name__ == '__main__':
 
         for cdn_provider in list(task["cdn"].keys()):
             if cdn_provider.lower() == "huaweicloud":
+                print("Generating Huawei Cloud CDN account")
                 cdn_account = HuaweiCloudAccount(ak=task["cdn"][cdn_provider]["ak"], sk=task["cdn"][cdn_provider]["sk"])
                 this_task = PaaSTask(domain=domain, dns_account=dns_account,
                                      cdn_cname=task["cdn"][cdn_provider]["cname"], cdn_account=cdn_account,
-                                     cdn_account_type=cdn_provider,
+                                     cdn_account_type=cdn_provider, region=task["cdn"][cdn_provider]["region"],
                                      traffic_package_floor_limit=traffic_package_floor_limit)
             elif cdn_provider.lower() == "qcloud":
+                print("Generating QCloud CDN account")
                 cdn_account = QCloudAccount(SecretId=task["cdn"][cdn_provider]["SecretId"],
                                             SecretKey=task["cdn"][cdn_provider]["SecretKey"])
                 this_task = PaaSTask(domain=domain, dns_account=dns_account,
                                      cdn_cname=task["cdn"][cdn_provider]["cname"], cdn_account=cdn_account,
-                                     cdn_account_type=cdn_provider,
+                                     cdn_account_type=cdn_provider, region=task["cdn"][cdn_provider]["region"],
                                      traffic_package_floor_limit=traffic_package_floor_limit)
             elif cdn_provider.lower() == "gcore":
+                print("Generating GCore CDN account")
                 cdn_account = GCoreAccount(api_key=task["cdn"][cdn_provider]["api_key"])
                 this_task = PaaSTask(domain=domain, dns_account=dns_account,
                                      cdn_cname=task["cdn"][cdn_provider]["cname"], cdn_account=cdn_account,
-                                     cdn_account_type=cdn_provider,
+                                     cdn_account_type=cdn_provider, region=task["cdn"][cdn_provider]["region"],
                                      traffic_package_floor_limit=traffic_package_floor_limit)
             else:
-                print("Unsupported DNS provider: " + dns_provider)
+                print("Unsupported DNS provider: " + cdn_provider)
                 if task["cdn"][cdn_provider]["cname"] != "":
-                    this_task = PaaSTask(domain=domain, dns_account=dns_account,
+                    this_task = PaaSTask(domain=domain, dns_account=dns_account, region=task["cdn"][cdn_provider]["region"],
                                          cdn_cname=task["cdn"][cdn_provider]["cname"])
                 else:
                     break
@@ -187,10 +201,12 @@ if __name__ == '__main__':
             if enable_off_peak_switch:
                 if task["cdn"][cdn_provider]["off_peak_type"] == "off-peak":
                     switch_to_off_peak_cdn_list.append(this_task)
+                    print("Find off-peak CDN: " + cdn_provider)
                 elif task["cdn"][cdn_provider]["off_peak_type"] == "regular":
                     switch_to_regular_cdn_list.append(this_task)
+                    print("Find regular CDN: " + cdn_provider)
                 elif task["cdn"][cdn_provider]["off_peak_type"] == "all-time":
-                    print("All time CDN provider:: " + dns_provider)
+                    print("All time CDN provider: " + cdn_provider)
                 else:
                     print("Error reading off peak CDN config")
                     break
@@ -203,7 +219,8 @@ if __name__ == '__main__':
                         if cdn_provider.lower() == "huaweicloud":
                             this_active_cdn_account = HuaweiCloudAccount(ak=task["cdn"][cdn_provider]["ak"],
                                                                          sk=task["cdn"][cdn_provider]["sk"])
-                            fail_over_task_list.append([this_active_cdn_account, "huaweicloud", traffic_package_floor_limit])
+                            fail_over_task_list.append(
+                                [this_active_cdn_account, "huaweicloud", traffic_package_floor_limit])
                         elif cdn_provider.lower() == "qcloud":
                             this_active_cdn_account = QCloudAccount(SecretId=task["cdn"][cdn_provider]["SecretId"],
                                                                     SecretKey=task["cdn"][cdn_provider]["SecretKey"])
