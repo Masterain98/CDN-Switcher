@@ -157,11 +157,11 @@ class HuaweiCloudAccount:
             if record["type"] == "CNAME":
                 for value in record["records"]:
                     if "aicdn.com" in value:
-                        this_cdn_provider = "UPYUN"
+                        this_cdn_provider = "upyun"
                     elif "gcdn.co" in value:
-                        this_cdn_provider = "G-Core"
-                    elif re.match(r"cdnhwc(\d)+.cn", value) is not None:
-                        this_cdn_provider = "Huawei Cloud"
+                        this_cdn_provider = "gcore"
+                    elif re.search(r"cdnhwc(\d)+.cn", value) is not None:
+                        this_cdn_provider = "huaweicloud"
                     else:
                         this_cdn_provider = "Unknown:" + value
 
