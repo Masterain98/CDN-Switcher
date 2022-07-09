@@ -14,7 +14,9 @@ switch_to_free_cdn_list = []
 
 
 @repeat(every().day.at('00:00'))
-def switch_to_off_peak_cdn(task_list: list):
+def switch_to_off_peak_cdn():
+    task_list = switch_to_off_peak_cdn_list.copy()
+    print("=" * 20 + "\nStart switching to off-peak CDN")
     # 默认假设只有华为云 CDN，或无指定平台的 CDN （仅设置了 cname 值的 CDN）
     # 遍历 switch_to_off_peak_cdn_list 中所有的 PaaSTask 对象
     for current_task in task_list:
@@ -44,10 +46,13 @@ def switch_to_off_peak_cdn(task_list: list):
                                                                         record_type="CNAME",
                                                                         new_record_value=[current_task.cname])
             print("Switch to off peak CDN: " + current_task.domain + "\nTarget CDN cname: " + current_task.cname)
+    print("Task Ended Successfully" + "\n" + "=" * 20)
 
 
 @repeat(every().day.at('18:00'))
-def switch_to_regular_cdn(task_list: list):
+def switch_to_regular_cdn():
+    task_list = switch_to_regular_cdn_list.copy()
+    print("=" * 20 + "\nStart switching to regular CDN")
     for current_task in task_list:
         allow_switch = False
         if current_task.cdn_account_type == "huaweicloud":
@@ -83,10 +88,11 @@ def switch_to_regular_cdn(task_list: list):
                                                                         target_line=region,
                                                                         record_type="CNAME",
                                                                         new_record_value=[current_task.cname])
+    print("Task Ended Successfully" + "\n" + "=" * 20)
 
 
-@repeat(every(10).minutes)
-def switch_to_free_cdn(task_list: list):
+@repeat(every(1).minutes)
+def switch_to_free_cdn():
     """
     切换到免费 CDN
     相比闲时CDN切换，switch_to_free_cdn 有一个更复杂的逻辑
@@ -97,10 +103,12 @@ def switch_to_free_cdn(task_list: list):
     该列表结构为 [ fail-over CDN 的 PaaSTask 对象, [Activate CDN 帐号对象, CDN 服务商名(str)], [Activate CDN 帐号对象, CDN 服务商名(str)]]
     :return:
     """
-    print("Start timely traffic check")
+    task_list = switch_to_free_cdn_list.copy()
+    print("=" * 20 + "\nStart timely traffic check")
     for current_task in task_list:
+        current_PaaSTask = current_task[0]
         # 每一个 current_task 代表一个 CDN 域名
-        current_cdn_status = current_task.dns_account.describe_cdn_provider(name=current_task.domain)
+        current_cdn_status = current_PaaSTask.dns_account.describe_cdn_provider(name=current_PaaSTask.domain)
         # current_cdn_status 的结构为         {
         #             "default": default_line_cdn_provider,
         #             "CN": china_line_cdn_provider,
@@ -115,40 +123,41 @@ def switch_to_free_cdn(task_list: list):
                     # 如果该 CDN 帐号是默认 CDN 帐号，则不需要检查流量包剩余量
                     current_remaining_traffic_percent = current_task[i][0].get_remaining_traffic()
                     if current_remaining_traffic_percent < current_task[i][2]:
-                        print("CDN Traffic Package is low, switch to fail-over CDN: " + current_task.domain)
-                        current_task.dns_account.update_record_set_by_name_line(name=current_task.domain,
+                        print("CDN Traffic Package is low, switch to fail-over CDN: " + current_PaaSTask.domain)
+                        current_PaaSTask.dns_account.update_record_set_by_name_line(name=current_PaaSTask.domain,
                                                                                 target_line="default-view",
                                                                                 record_type="CNAME",
-                                                                                new_record_value=current_task[0].cname)
+                                                                                new_record_value=[current_PaaSTask.cdn_cname])
                     else:
                         print(
-                            "CDN Traffic Package is high, keep using default CDN at Default Line: " + current_task.domain)
+                            "CDN Traffic Package is high, keep using default CDN at Default Line: " + current_PaaSTask.domain)
                         pass
                 elif this_cdn_type in current_cdn_status["CN"]:
                     current_remaining_traffic_percent = current_task[i][0].get_remaining_traffic()
                     if current_remaining_traffic_percent < current_task[i][2]:
-                        print("CDN Traffic Package is low, switch to fail-over CDN: " + current_task.domain)
-                        current_task.dns_account.update_record_set_by_name_line(name=current_task.domain,
+                        print("CDN Traffic Package is low, switch to fail-over CDN: " + current_PaaSTask.domain)
+                        current_PaaSTask.dns_account.update_record_set_by_name_line(name=current_PaaSTask.domain,
                                                                                 target_line="CN",
                                                                                 record_type="CNAME",
-                                                                                new_record_value=current_task[0].cname)
+                                                                                new_record_value=[current_PaaSTask.cdn_cname])
                     else:
-                        print("CDN Traffic Package is high, keep using default CDN at CN Line: " + current_task.domain)
+                        print("CDN Traffic Package is high, keep using default CDN at CN Line: " + current_PaaSTask.domain)
                         pass
                 elif this_cdn_type in current_cdn_status["Abroad"]:
                     current_remaining_traffic_percent = current_task[i][0].get_remaining_traffic()
                     if current_remaining_traffic_percent < current_task[i][2]:
-                        print("CDN Traffic Package is low, switch to fail-over CDN: " + current_task.domain)
-                        current_task.dns_account.update_record_set_by_name_line(name=current_task.domain,
+                        print("CDN Traffic Package is low, switch to fail-over CDN: " + current_PaaSTask.domain)
+                        current_PaaSTask.dns_account.update_record_set_by_name_line(name=current_PaaSTask.domain,
                                                                                 target_line="Abroad",
                                                                                 record_type="CNAME",
-                                                                                new_record_value=current_task[0].cname)
+                                                                                new_record_value=[current_PaaSTask.cdn_cname])
                     else:
                         print(
-                            "CDN Traffic Package is high, keep using default CDN at Aboard Line: " + current_task.domain)
+                            "CDN Traffic Package is high, keep using default CDN at Aboard Line: " + current_PaaSTask.domain)
                         pass
             else:
                 pass
+    print("Task Ended Successfully" + "\n" + "=" * 20)
 
 
 if __name__ == '__main__':
@@ -231,6 +240,7 @@ if __name__ == '__main__':
                         else:
                             pass
                 switch_to_free_cdn_list.append(fail_over_task_list)
+    print("Read config file successfully" + "\n" + "=" * 20)
 
     while True:
         schedule.run_pending()
