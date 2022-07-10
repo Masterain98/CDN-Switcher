@@ -55,7 +55,7 @@ class QCloudAccount:
             bytes_total += package["Bytes"]
             bytes_used += package["BytesUsed"]
         bytes_remaining = bytes_total - bytes_used
-        bytes_remaining_percentage = round(bytes_remaining / bytes_total, 4)
+        bytes_remaining_percentage = round(bytes_remaining / bytes_total, 4) * 100
         return {"bytes_total": bytes_total, "bytes_used": bytes_used, "bytes_remaining": bytes_remaining,
                 "bytes_remaining_percentage": bytes_remaining_percentage}
 
