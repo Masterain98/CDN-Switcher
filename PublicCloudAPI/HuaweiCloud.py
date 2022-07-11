@@ -264,7 +264,7 @@ class HuaweiCloudAccount:
             response = json.loads(str(client.show_record_set_by_zone(request)))["recordsets"]
             for this_record in response:
                 if line is not None:
-                    if this_record["line"] == line:
+                    if this_record["line"].lower() == line.lower():
                         record_id_list.append(this_record["id"])
             return record_id_list
         except exceptions.ClientRequestException as e:
@@ -329,7 +329,7 @@ class HuaweiCloudAccount:
     def update_record_set_by_name_line(self, name: str, target_line: str, new_record_value: list, record_type: str):
         result_list = []
         zone_id = self.get_zone_id_by_name(name)
-        record_id_list = self.get_record_sets_id_by_name(name, target_line, zone_id)
+        record_id_list = self.get_record_sets_id_by_name(name=name, line=target_line, zone_id=zone_id)
         if len(record_id_list) == 0:
             raise AttributeError("No record found")
         for record_id in record_id_list:
@@ -502,10 +502,12 @@ class HuaweiCloudAccount:
         return {
             "china_mainland_traffic_remaining": china_mainland_traffic_remaining,
             "china_mainland_traffic_total": china_mainland_traffic_total,
-            "china_mainland_traffic_percent": round(china_mainland_traffic_remaining / china_mainland_traffic_total * 100, 2),
+            "china_mainland_traffic_percent": round(
+                china_mainland_traffic_remaining / china_mainland_traffic_total * 100, 2),
             "china_off_peak_traffic_remaining": china_off_peak_traffic_remaining,
             "china_off_peak_traffic_total": china_off_peak_traffic_total,
-            "china_off_peak_traffic_percent": round(china_off_peak_traffic_remaining / china_off_peak_traffic_total * 100, 2)
+            "china_off_peak_traffic_percent": round(
+                china_off_peak_traffic_remaining / china_off_peak_traffic_total * 100, 2)
         }
 
     def get_remaining_traffic_percentage(self):
