@@ -13,7 +13,8 @@ switch_to_regular_cdn_list = []
 switch_to_free_cdn_list = []
 
 
-@repeat(every().day.at('00:00'))
+#@repeat(every().day.at('00:00'))
+@repeat(every(1).minutes)
 def switch_to_off_peak_cdn():
     task_list = switch_to_off_peak_cdn_list.copy()
     print("=" * 20 + "\nStart switching to off-peak CDN")
@@ -44,54 +45,53 @@ def switch_to_off_peak_cdn():
                 current_task.dns_account.update_record_set_by_name_line(name=current_task.domain,
                                                                         target_line=region,
                                                                         record_type="CNAME",
-                                                                        new_record_value=[current_task.cname])
-            print("Switch to off peak CDN: " + current_task.domain + "\nTarget CDN cname: " + current_task.cname)
+                                                                        new_record_value=[current_task.cdn_cname])
+            print("Switch to off peak CDN: " + current_task.domain + "\nTarget CDN cname: " + current_task.cdn_cname)
     print("Task Ended Successfully" + "\n" + "=" * 20)
 
 
-@repeat(every().day.at('18:00'))
+#@repeat(every().day.at('18:00'))
+#@repeat(every(1).minutes)
 def switch_to_regular_cdn():
     task_list = switch_to_regular_cdn_list.copy()
     print("=" * 20 + "\nStart switching to regular CDN")
     for current_task in task_list:
         allow_switch = False
+        remaining_traffic = current_task.cdn_account.get_remaining_traffic_percentage()
+        if remaining_traffic > current_task.traffic_package_floor_limit:
+            print("高于限制，切换")
+            allow_switch = True
+        else:
+            print("剩余流量：" + str(remaining_traffic) +
+                  " | 低于限制：" + str(current_task.traffic_package_floor_limit) + " | 不切换")
         if current_task.cdn_account_type == "huaweicloud":
+            print("切换至华为云 CDN")
             # 华为云/ Huawei Cloud
-            # 检查 CDN 帐号流量包剩余量是否足高于最低限制
-            remaining_traffic = current_task.cdn_account.get_remaining_traffic()
-            print("Current traffic package status: " + str(remaining_traffic))
-            # 如果高于限制，则切换
-            if remaining_traffic["china_mainland_traffic_percent"] > current_task.traffic_package_floor_limit:
-                allow_switch = True
         elif current_task.cdn_account_type == "qcloud":
+            print("切换至腾讯云 CDN")
             # 腾讯云/ Qcloud/ Tencent Cloud
-            remaining_traffic = current_task.cdn_account.get_remaining_traffic()
-            print("Current traffic package status: " + str(remaining_traffic))
-            if remaining_traffic["bytes_remaining_percentage"] > current_task.traffic_package_floor_limit:
-                allow_switch = True
         elif current_task.cdn_account_type == "gcore":
+            print("切换至 G-Core CDN")
             # G-Core CDN
-            remaining_traffic = current_task.cdn_account.get_remaining_traffic()
-            print("Current traffic credit status: " + str(remaining_traffic))
-            if remaining_traffic > current_task.traffic_package_floor_limit:
-                allow_switch = True
         else:
             # Others
+            print("未知 CDN 服务商，根据规则默认允许切换")
             allow_switch = True
 
         if allow_switch:
-            print("Switch to regular CDN: " + current_task.domain + "\nTarget CDN cname: " + current_task.cname)
+            print("Switch to regular CDN: " + current_task.domain + "\nTarget CDN cname: " + current_task.cdn_cname)
             # 在 PaaSTask 对象和 Config.json 中 region 是一个列表，因此需要遍历
             # update_record_set_by_name_line 中 region 要求是一个字符串
             for region in current_task.region:
+                print("目标域名: " + current_task.domain + "\n目标解析记录: " + current_task.cdn_cname + "\n目标区域: " + region)
                 current_task.dns_account.update_record_set_by_name_line(name=current_task.domain,
                                                                         target_line=region,
                                                                         record_type="CNAME",
-                                                                        new_record_value=[current_task.cname])
+                                                                        new_record_value=[current_task.cdn_cname])
     print("Task Ended Successfully" + "\n" + "=" * 20)
 
 
-@repeat(every(1).minutes)
+@repeat(every(90).minutes)
 def switch_to_free_cdn():
     """
     切换到免费 CDN
@@ -178,14 +178,14 @@ if __name__ == '__main__':
 
         for cdn_provider in list(task["cdn"].keys()):
             if cdn_provider.lower() == "huaweicloud":
-                print("Generating Huawei Cloud CDN account")
+                print("\nGenerating Huawei Cloud CDN account")
                 cdn_account = HuaweiCloudAccount(ak=task["cdn"][cdn_provider]["ak"], sk=task["cdn"][cdn_provider]["sk"])
                 this_task = PaaSTask(domain=domain, dns_account=dns_account,
                                      cdn_cname=task["cdn"][cdn_provider]["cname"], cdn_account=cdn_account,
                                      cdn_account_type=cdn_provider, region=task["cdn"][cdn_provider]["region"],
                                      traffic_package_floor_limit=traffic_package_floor_limit)
             elif cdn_provider.lower() == "qcloud":
-                print("Generating QCloud CDN account")
+                print("\nGenerating QCloud CDN account")
                 cdn_account = QCloudAccount(SecretId=task["cdn"][cdn_provider]["SecretId"],
                                             SecretKey=task["cdn"][cdn_provider]["SecretKey"])
                 this_task = PaaSTask(domain=domain, dns_account=dns_account,
@@ -193,14 +193,14 @@ if __name__ == '__main__':
                                      cdn_account_type=cdn_provider, region=task["cdn"][cdn_provider]["region"],
                                      traffic_package_floor_limit=traffic_package_floor_limit)
             elif cdn_provider.lower() == "gcore":
-                print("Generating GCore CDN account")
+                print("\nGenerating GCore CDN account")
                 cdn_account = GCoreAccount(api_key=task["cdn"][cdn_provider]["api_key"])
                 this_task = PaaSTask(domain=domain, dns_account=dns_account,
                                      cdn_cname=task["cdn"][cdn_provider]["cname"], cdn_account=cdn_account,
                                      cdn_account_type=cdn_provider, region=task["cdn"][cdn_provider]["region"],
                                      traffic_package_floor_limit=traffic_package_floor_limit)
             else:
-                print("Unsupported DNS provider: " + cdn_provider)
+                print("\nUnsupported DNS provider: " + cdn_provider)
                 if task["cdn"][cdn_provider]["cname"] != "":
                     this_task = PaaSTask(domain=domain, dns_account=dns_account, region=task["cdn"][cdn_provider]["region"],
                                          cdn_cname=task["cdn"][cdn_provider]["cname"])
@@ -240,7 +240,7 @@ if __name__ == '__main__':
                         else:
                             pass
                 switch_to_free_cdn_list.append(fail_over_task_list)
-    print("Read config file successfully" + "\n" + "=" * 20)
+    print("\nRead config file successfully" + "\n" + "=" * 20)
 
     while True:
         schedule.run_pending()
