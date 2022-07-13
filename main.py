@@ -13,8 +13,7 @@ switch_to_regular_cdn_list = []
 switch_to_free_cdn_list = []
 
 
-#@repeat(every().day.at('00:00'))
-@repeat(every(1).minutes)
+@repeat(every().day.at('00:00'))
 def switch_to_off_peak_cdn():
     task_list = switch_to_off_peak_cdn_list.copy()
     print("=" * 20 + "\nStart switching to off-peak CDN")
@@ -50,8 +49,7 @@ def switch_to_off_peak_cdn():
     print("Task Ended Successfully" + "\n" + "=" * 20)
 
 
-#@repeat(every().day.at('18:00'))
-#@repeat(every(1).minutes)
+@repeat(every().day.at('18:00'))
 def switch_to_regular_cdn():
     task_list = switch_to_regular_cdn_list.copy()
     print("=" * 20 + "\nStart switching to regular CDN")
