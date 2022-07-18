@@ -198,7 +198,7 @@ if __name__ == '__main__':
                                      cdn_account_type=cdn_provider, region=task["cdn"][cdn_provider]["region"],
                                      traffic_package_floor_limit=traffic_package_floor_limit)
             else:
-                print("\nUnsupported DNS provider: " + cdn_provider)
+                print("\nUnsupported CDN provider: " + cdn_provider)
                 if task["cdn"][cdn_provider]["cname"] != "":
                     this_task = PaaSTask(domain=domain, dns_account=dns_account, region=task["cdn"][cdn_provider]["region"],
                                          cdn_cname=task["cdn"][cdn_provider]["cname"])
