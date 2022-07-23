@@ -39,39 +39,14 @@ class HuaweiCloudAccount:
     """
 
     @class_log_printer
-    def list_public_zone(self):
-        """
-        # Show all zones and their ID under the account
-        # Zone here is a public domain
-        :return: List of public zones
-        """
-        client = DnsClient.new_builder() \
-            .with_credentials(self.__credentials) \
-            .with_region(DnsRegion.value_of(self.__region)) \
-            .build()
-
-        try:
-            zone_list = []
-            request = ListPublicZonesRequest()
-            response = json.loads(str(client.list_public_zones(request)))["zones"]
-            for zone in response:
-                zone_list.append({"zone": zone["name"], "id": zone["id"]})
-            return zone_list
-        except exceptions.ClientRequestException as e:
-            print(e.status_code)
-            print(e.request_id)
-            print(e.error_code)
-            print(e.error_msg)
-            return None
-
-    @class_log_printer
     def get_record_id_by_name(self, name):
         """
-        # This is a generic function provided by HuaweiCloud
-        :param zone_id: Zone ID
-        :param name: Record name
-        :return: Record ID
+            # This is a generic function provided by HuaweiCloud
+            :param zone_id: Zone ID
+            :param name: Record name
+            :return: Record ID
         """
+        result_recordsets = []
 
         client = DnsClient.new_builder() \
             .with_credentials(self.__credentials) \
@@ -82,42 +57,23 @@ class HuaweiCloudAccount:
             request = ListRecordSetsWithLineRequest()
             request.name = name
             response = client.list_record_sets_with_line(request)
-            return json.loads(str(response))
+            response = json.loads(str(response))
+            for record in response["recordsets"]:
+                if record["name"] == name:
+                    result_recordsets.append(record)
+            return {
+                "links": {
+                    "self": "https://dns.myhuaweicloud.com/v2.1/recordsets?" + name
+                },
+                "recordsets": result_recordsets
+            }
+
         except exceptions.ClientRequestException as e:
             print(e.status_code)
             print(e.request_id)
             print(e.error_code)
             print(e.error_msg)
 
-    @class_log_printer
-    def get_record_china_line_id(self, name):
-        # 遍历中国大陆地区解析记录 ID
-        result = []
-        records = self.get_record_id_by_name(name)["recordsets"]
-        for record in records:
-            if record["line"] == "CN":
-                result.append(record["id"])
-        return result  # return a list of record ID
-
-    @class_log_printer
-    def get_record_abroad_line_id(self, name):
-        # 遍历国外地区解析记录 ID
-        result = []
-        records = self.get_record_id_by_name(name)["recordsets"]
-        for record in records:
-            if record["line"] == "Abroad":
-                result.append(record["id"])
-        return result  # return a list of record ID
-
-    @class_log_printer
-    def get_record_default_line_id(self, name):
-        # 遍历默认解析记录 ID
-        result = []
-        records = self.get_record_id_by_name(name)["recordsets"]
-        for record in records:
-            if record["line"] == "default_view":
-                result.append(record["id"])
-        return result  # return a list of record ID
 
     @class_log_printer
     def get_zone_id_by_name(self, name):
@@ -182,50 +138,6 @@ class HuaweiCloudAccount:
             "CN": china_line_cdn_provider,
             "Abroad": abroad_line_cdn_provider
         }
-
-    @class_log_printer
-    def create_record_set_with_line(self, name: str, record_type: str, records: list, line: str, ttl: int = 300,
-                                    zone_id: str = None):
-        ALLOWED_TYPES = ["A", "AAAA", "CNAME", "TXT", "MX", "NS", "SRV", "CAA"]
-        ALLOWED_LINES = ["default_view", "CN", "Abroad", "Dianxin", "Liantong", "Yidong", "Jiaoyuwang",
-                         "Tietong", "Pengboshi"]
-        if zone_id is None:
-            try:
-                root_domain = re.search(r"(\w|\d)+(\.{1})(\w)+(\.)?$", name).group(0)
-            except AttributeError:
-                print("Please input a valid domain name")
-                return None
-            zone_id = self.get_zone_id_by_name(root_domain)
-        if record_type not in ALLOWED_TYPES:
-            print("Please input a valid record type")
-            return None
-        if line not in ALLOWED_LINES:
-            print("Please input a valid line")
-            return None
-
-        client = DnsClient.new_builder() \
-            .with_credentials(self.__credentials) \
-            .with_region(DnsRegion.value_of(self.__region)) \
-            .build()
-
-        try:
-            request = CreateRecordSetWithLineRequest()
-            request.zone_id = zone_id
-            listCreateRecordSetWithLineReqRecordsbody = records
-            request.body = CreateRecordSetWithLineReq(
-                line=line,
-                records=listCreateRecordSetWithLineReqRecordsbody,
-                type=record_type,
-                name=name
-            )
-            response = client.create_record_set_with_line(request)
-            return json.loads(str(response))
-        except exceptions.ClientRequestException as e:
-            print(e.status_code)
-            print(e.request_id)
-            print(e.error_code)
-            print(e.error_msg)
-            return None
 
     @class_log_printer
     def delete_records_set_by_id(self, recordset_id, zone_id):

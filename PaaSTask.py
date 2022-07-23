@@ -23,7 +23,7 @@ class PaaSTask:
         if cdn_account is not None and cdn_account_type is not None:
             self.cdn_account = cdn_account
             self.cdn_account_type = cdn_account_type
-        elif cdn_account is not None and cdn_account_type is None:
+        elif cdn_account is None and cdn_account_type is None:
             self.cdn_account = None
             self.cdn_account_type = None
         else:
