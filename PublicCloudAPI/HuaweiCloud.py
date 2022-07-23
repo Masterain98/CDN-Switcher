@@ -59,7 +59,7 @@ class HuaweiCloudAccount:
             response = client.list_record_sets_with_line(request)
             response = json.loads(str(response))
             for record in response["recordsets"]:
-                if record["name"] == name:
+                if record["name"] == name or record["name"] == name + ".":
                     result_recordsets.append(record)
             return {
                 "links": {
@@ -177,7 +177,8 @@ class HuaweiCloudAccount:
             for this_record in response:
                 if line is not None:
                     if this_record["line"].lower() == line.lower():
-                        record_id_list.append(this_record["id"])
+                        if this_record["name"] == name or this_record["name"] == name + ".":
+                            record_id_list.append(this_record["id"])
             return record_id_list
         except exceptions.ClientRequestException as e:
             print(e.status_code)
